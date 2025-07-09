@@ -172,9 +172,9 @@ while cap.isOpened():
 
     frame_count += 1
     
-    # Rotate frame if needed (90 degrees counterclockwise to fix sideways video)
+    # Rotate frame if needed (90 degrees clockwise to fix sideways video)
     if needs_rotation:
-        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
     
     # Process pose detection every frame for smooth visualization
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
