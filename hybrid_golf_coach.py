@@ -10,6 +10,7 @@ import os
 import time
 import threading
 import queue
+import pandas as pd
 
 # Configure Gemini API
 genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
@@ -23,7 +24,7 @@ pose = mp_pose.Pose(
 )
 mp_drawing = mp.solutions.drawing_utils
 
-class RealTimeGolfCoach:
+class HybridGolfCoach:
     def __init__(self):
         self.current_feedback = ""
         self.feedback_timestamp = 0
@@ -31,10 +32,22 @@ class RealTimeGolfCoach:
         self.analysis_queue = queue.Queue(maxsize=2)
         self.running = True
         
+        # Load script bank
+        self.script_bank = self.load_script_bank()
+        
         # Start analysis thread
         self.analysis_thread = threading.Thread(target=self.analysis_worker)
         self.analysis_thread.daemon = True
         self.analysis_thread.start()
+    
+    def load_script_bank(self):
+        """Load the coaching script bank from CSV"""
+        try:
+            df = pd.read_csv('attached_assets/Refined_Golf_Swing_Feedback_Script_Bank__10th_Grade_Advanced_Tone__1752085164319.csv')
+            return df.to_dict('records')
+        except Exception as e:
+            print(f"Could not load script bank: {e}")
+            return []
     
     def frame_to_base64(self, frame):
         """Convert OpenCV frame to base64 string for Gemini API"""
@@ -43,17 +56,33 @@ class RealTimeGolfCoach:
         pil_image.save(buffer, format='JPEG', quality=70)
         return base64.b64encode(buffer.getvalue()).decode()
     
+    def format_script_bank_context(self):
+        """Format script bank examples for the prompt"""
+        if not self.script_bank:
+            return ""
+        
+        examples = []
+        for i, script in enumerate(self.script_bank[:5]):  # Use first 5 examples
+            examples.append(f"""
+Example {i+1}: {script.get('Fault', 'Unknown fault')}
+- Observation: "{script.get('Observation', '')}"
+- Beginner Cue: "{script.get('Cue (Beginner)', '')}"
+- Advanced Cue: "{script.get('Cue (Advanced)', '')}"
+- Reinforcement: "{script.get('Reinforcement (Beginner)', '')}"
+            """)
+        
+        return "\n".join(examples)
+    
     def analyze_with_gemini(self, frame, pose_landmarks):
-        """Analyze pose with Gemini API"""
+        """Analyze pose with Gemini API using hybrid approach"""
         try:
             frame_b64 = self.frame_to_base64(frame)
             
             pose_description = ""
             if pose_landmarks:
-                # Extract key landmarks for golf analysis
                 landmarks = pose_landmarks.landmark
                 
-                # Calculate angles and positions
+                # Extract key landmarks for golf analysis
                 left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
                 right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
                 left_elbow = landmarks[mp_pose.PoseLandmark.LEFT_ELBOW]
@@ -64,37 +93,44 @@ class RealTimeGolfCoach:
                 right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
                 nose = landmarks[mp_pose.PoseLandmark.NOSE]
                 
-                # Calculate shoulder alignment
+                # Calculate key metrics
                 shoulder_slope = abs(left_shoulder.y - right_shoulder.y)
                 
                 pose_description = f"""
-                Golf Swing Analysis:
-                - Head stability: {nose.y:.3f}
+                Pose Analysis:
+                - Head position: ({nose.x:.3f}, {nose.y:.3f})
                 - Shoulder alignment: {shoulder_slope:.3f}
-                - Lead arm position: ({left_elbow.x:.3f}, {left_elbow.y:.3f})
-                - Trail arm position: ({right_elbow.x:.3f}, {right_elbow.y:.3f})
-                - Hip rotation: Left hip at ({left_hip.x:.3f}, {left_hip.y:.3f})
-                - Wrist positions: Lead ({left_wrist.x:.3f}, {left_wrist.y:.3f}), Trail ({right_wrist.x:.3f}, {right_wrist.y:.3f})
+                - Left arm: Elbow ({left_elbow.x:.3f}, {left_elbow.y:.3f}), Wrist ({left_wrist.x:.3f}, {left_wrist.y:.3f})
+                - Right arm: Elbow ({right_elbow.x:.3f}, {right_elbow.y:.3f}), Wrist ({right_wrist.x:.3f}, {right_wrist.y:.3f})
+                - Hip position: Left ({left_hip.x:.3f}, {left_hip.y:.3f}), Right ({right_hip.x:.3f}, {right_hip.y:.3f})
                 """
             
-            prompt = f"""
-            You are a professional golf instructor and swing coach providing real-time coaching feedback.
+            script_context = self.format_script_bank_context()
             
-            Use this proven coaching framework:
-            1. OBSERVATION: Briefly describe what you see
-            2. CUE/FIX: Give ONE specific, actionable instruction using feel-based language
-            3. REINFORCEMENT: End with encouraging context
+            prompt = f"""
+            You are a professional golf instructor and swing coach providing real-time coaching feedback. 
+            
+            Use the following coaching framework as your foundation, but adapt dynamically to what you observe:
+            
+            COACHING FRAMEWORK:
+            1. OBSERVATION: Describe what you see objectively
+            2. CUE/FIX: Give ONE specific, actionable instruction
+            3. REINFORCEMENT: End with encouraging context about why this helps
             
             COACHING STYLE EXAMPLES:
-            - "Your takeaway is pulling the club behind your body early. Let the clubhead stay outside your hands for the first couple feet back. That'll help you stay on plane and make the swing easier to repeat."
-            - "You're lifting your head just before impact. Try to keep your eyes down and maintain your spine angle longer. This helps you strike the ball more consistently."
-            - "Your lead arm is bending too early in the backswing. Keep it straighter through the top of the swing. This creates better width and more power."
+            {script_context}
             
             CURRENT SWING ANALYSIS:
             {pose_description}
             
-            Provide coaching feedback following the framework above. Focus on ONE key improvement.
-            Use accessible language and positive reinforcement. Maximum 2 sentences total.
+            Your response should follow this structure:
+            1. Identify the most important issue you observe
+            2. Provide a clear, feel-based cue (avoid technical jargon)
+            3. End with positive reinforcement
+            
+            Keep your response conversational and encouraging. Focus on ONE key improvement.
+            Adapt the language to what seems appropriate for this golfer's skill level.
+            Maximum 2 sentences total.
             """
             
             image_part = {
@@ -120,9 +156,9 @@ class RealTimeGolfCoach:
                     if feedback:
                         self.current_feedback = feedback
                         self.feedback_timestamp = timestamp
-                        print(f"New feedback: {feedback}")
+                        print(f"Hybrid feedback: {feedback}")
                 
-                time.sleep(0.1)  # Prevent busy waiting
+                time.sleep(0.1)
             except queue.Empty:
                 continue
             except Exception as e:
@@ -131,10 +167,10 @@ class RealTimeGolfCoach:
     def add_frame_for_analysis(self, frame, pose_landmarks):
         """Add frame to analysis queue (non-blocking)"""
         try:
-            if self.analysis_queue.qsize() < 2:  # Don't overwhelm the queue
+            if self.analysis_queue.qsize() < 2:
                 self.analysis_queue.put_nowait((frame.copy(), pose_landmarks, time.time()))
         except queue.Full:
-            pass  # Skip if queue is full
+            pass
     
     def get_current_feedback(self):
         """Get current feedback if still valid"""
@@ -147,16 +183,17 @@ class RealTimeGolfCoach:
         self.running = False
 
 def main():
-    # Initialize camera (use 0 for default camera, or video file path)
-    cap = cv2.VideoCapture(0)  # Change to video file path if needed
+    # Initialize camera
+    cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     
-    coach = RealTimeGolfCoach()
+    coach = HybridGolfCoach()
     frame_count = 0
-    analysis_interval = 30  # Analyze every 30 frames (about 1 per second)
+    analysis_interval = 30  # Analyze every 30 frames
     
-    print("Real-time Golf Coach started!")
+    print("Hybrid Golf Coach started!")
+    print("Using script bank foundation with dynamic analysis")
     print("Press 'q' to quit, 'space' to trigger analysis")
     
     try:
@@ -202,16 +239,17 @@ def main():
                     cv2.putText(frame, feedback, (20, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             
             # Add instructions
+            cv2.putText(frame, "Hybrid Golf Coach - Script Bank + Dynamic Analysis", 
+                       (10, frame.shape[0] - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             cv2.putText(frame, "Press 'q' to quit, 'space' for instant analysis", 
                        (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             
-            cv2.imshow('Real-time Golf Coach', frame)
+            cv2.imshow('Hybrid Golf Coach', frame)
             
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 break
             elif key == ord(' ') and results.pose_landmarks:
-                # Trigger immediate analysis
                 coach.add_frame_for_analysis(frame, results.pose_landmarks)
     
     finally:
