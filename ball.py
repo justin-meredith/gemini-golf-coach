@@ -95,18 +95,18 @@ def analyze_pose_with_gemini(frame, pose_landmarks, max_retries=2):
                 """
             
             prompt = f"""
-            You are a professional golf instructor analyzing a golf swing. Based on this frame and pose data, provide specific, actionable coaching feedback.
+            You are a golf swing analyst providing a detailed technical breakdown to a golf instructor. Analyze this frame and pose data objectively, describing exactly what is happening in the student's swing mechanics.
             
             {pose_description}
             
-            Focus on:
-            1. Posture and alignment
-            2. Arm positioning and extension
-            3. Hip rotation and weight transfer
-            4. Head position and stability
-            5. Overall swing mechanics
+            Provide a factual analysis covering:
+            1. Current body position and posture details
+            2. Arm angles, extension, and positioning relative to optimal positions
+            3. Hip and shoulder rotation angles and weight distribution
+            4. Head position and spine angle maintenance
+            5. Overall swing phase identification and mechanics assessment
             
-            Provide feedback in 1-2 concise sentences that a golfer can immediately apply. Be specific and constructive.
+            Be technical and descriptive rather than prescriptive. Report what you observe in 2-3 sentences as if briefing the coach on their student's current swing state.
             """
             
             # Create image part for Gemini
