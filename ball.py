@@ -28,8 +28,21 @@ mp_drawing = mp.solutions.drawing_utils
 video_path = 'behind-view-slomo.mov'
 cap = cv2.VideoCapture(video_path)
 fps = int(cap.get(cv2.CAP_PROP_FPS))
-width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+# Check if video needs rotation (common with phone videos)
+# If width > height but the video appears to be portrait, we need to rotate
+needs_rotation = original_width > original_height
+if needs_rotation:
+    # After rotation, dimensions will be swapped
+    width = original_height
+    height = original_width
+    print(f"Detected rotated video ({original_width}x{original_height}). Will rotate to {width}x{height}")
+else:
+    width = original_width
+    height = original_height
+    print(f"Video dimensions: {width}x{height}")
 
 def frame_to_base64(frame):
     """Convert OpenCV frame to base64 string for Gemini API"""
@@ -158,6 +171,10 @@ while cap.isOpened():
         break
 
     frame_count += 1
+    
+    # Rotate frame if needed (90 degrees counterclockwise to fix sideways video)
+    if needs_rotation:
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
     
     # Process pose detection every frame for smooth visualization
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
