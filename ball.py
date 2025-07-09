@@ -25,7 +25,7 @@ pose = mp_pose.Pose(
 mp_drawing = mp.solutions.drawing_utils
 
 # Open the video file
-video_path = 'behind-view-slomo.mov'
+video_path = 'behind-view-full-speed.mov'
 cap = cv2.VideoCapture(video_path)
 fps = int(cap.get(cv2.CAP_PROP_FPS))
 original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
