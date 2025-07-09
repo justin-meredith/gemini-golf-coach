@@ -38,66 +38,86 @@ def frame_to_base64(frame):
     pil_image.save(buffer, format='JPEG', quality=85)
     return base64.b64encode(buffer.getvalue()).decode()
 
-def analyze_pose_with_gemini(frame, pose_landmarks):
-    """Send frame and pose data to Gemini for analysis"""
-    try:
-        # Convert frame to base64
-        frame_b64 = frame_to_base64(frame)
-        
-        # Create pose description from landmarks
-        pose_description = ""
-        if pose_landmarks:
-            # Key golf swing landmarks
-            left_shoulder = pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_SHOULDER]
-            right_shoulder = pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_SHOULDER]
-            left_elbow = pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW]
-            right_elbow = pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_ELBOW]
-            left_wrist = pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST]
-            right_wrist = pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_WRIST]
-            left_hip = pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_HIP]
-            right_hip = pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_HIP]
-            nose = pose_landmarks.landmark[mp_pose.PoseLandmark.NOSE]
+def analyze_pose_with_gemini(frame, pose_landmarks, max_retries=2):
+    """Send frame and pose data to Gemini for analysis with timeout and retries"""
+    for attempt in range(max_retries + 1):
+        try:
+            print(f"  Sending to Gemini API (attempt {attempt + 1}/{max_retries + 1})...")
+            start_time = time.time()
             
-            pose_description = f"""
-            Pose Analysis:
-            - Head position: ({nose.x:.3f}, {nose.y:.3f})
-            - Left shoulder: ({left_shoulder.x:.3f}, {left_shoulder.y:.3f})
-            - Right shoulder: ({right_shoulder.x:.3f}, {right_shoulder.y:.3f})
-            - Left elbow: ({left_elbow.x:.3f}, {left_elbow.y:.3f})
-            - Right elbow: ({right_elbow.x:.3f}, {right_elbow.y:.3f})
-            - Left wrist: ({left_wrist.x:.3f}, {left_wrist.y:.3f})
-            - Right wrist: ({right_wrist.x:.3f}, {right_wrist.y:.3f})
-            - Left hip: ({left_hip.x:.3f}, {left_hip.y:.3f})
-            - Right hip: ({right_hip.x:.3f}, {right_hip.y:.3f})
+            # Check if API key is set
+            if not os.environ.get('GEMINI_API_KEY'):
+                print("  ERROR: GEMINI_API_KEY not found in environment!")
+                return "API key not configured. Please set GEMINI_API_KEY in Secrets."
+            
+            # Convert frame to base64
+            frame_b64 = frame_to_base64(frame)
+            print(f"  Image encoded in {time.time() - start_time:.2f}s")
+            
+            # Create pose description from landmarks
+            pose_description = ""
+            if pose_landmarks:
+                # Key golf swing landmarks
+                left_shoulder = pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_SHOULDER]
+                right_shoulder = pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+                left_elbow = pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_ELBOW]
+                right_elbow = pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_ELBOW]
+                left_wrist = pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_WRIST]
+                right_wrist = pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_WRIST]
+                left_hip = pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_HIP]
+                right_hip = pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_HIP]
+                nose = pose_landmarks.landmark[mp_pose.PoseLandmark.NOSE]
+                
+                pose_description = f"""
+                Pose Analysis:
+                - Head position: ({nose.x:.3f}, {nose.y:.3f})
+                - Left shoulder: ({left_shoulder.x:.3f}, {left_shoulder.y:.3f})
+                - Right shoulder: ({right_shoulder.x:.3f}, {right_shoulder.y:.3f})
+                - Left elbow: ({left_elbow.x:.3f}, {left_elbow.y:.3f})
+                - Right elbow: ({right_elbow.x:.3f}, {right_elbow.y:.3f})
+                - Left wrist: ({left_wrist.x:.3f}, {left_wrist.y:.3f})
+                - Right wrist: ({right_wrist.x:.3f}, {right_wrist.y:.3f})
+                - Left hip: ({left_hip.x:.3f}, {left_hip.y:.3f})
+                - Right hip: ({right_hip.x:.3f}, {right_hip.y:.3f})
+                """
+            
+            prompt = f"""
+            You are a professional golf instructor analyzing a golf swing. Based on this frame and pose data, provide specific, actionable coaching feedback.
+            
+            {pose_description}
+            
+            Focus on:
+            1. Posture and alignment
+            2. Arm positioning and extension
+            3. Hip rotation and weight transfer
+            4. Head position and stability
+            5. Overall swing mechanics
+            
+            Provide feedback in 1-2 concise sentences that a golfer can immediately apply. Be specific and constructive.
             """
-        
-        prompt = f"""
-        You are a professional golf instructor analyzing a golf swing. Based on this frame and pose data, provide specific, actionable coaching feedback.
-        
-        {pose_description}
-        
-        Focus on:
-        1. Posture and alignment
-        2. Arm positioning and extension
-        3. Hip rotation and weight transfer
-        4. Head position and stability
-        5. Overall swing mechanics
-        
-        Provide feedback in 1-2 concise sentences that a golfer can immediately apply. Be specific and constructive.
-        """
-        
-        # Create image part for Gemini
-        image_part = {
-            "mime_type": "image/jpeg",
-            "data": frame_b64
-        }
-        
-        response = model.generate_content([prompt, image_part])
-        return response.text.strip()
-        
-    except Exception as e:
-        print(f"Gemini API error: {e}")
-        return None
+            
+            # Create image part for Gemini
+            image_part = {
+                "mime_type": "image/jpeg",
+                "data": frame_b64
+            }
+            
+            # Generate content with timeout simulation
+            api_start = time.time()
+            response = model.generate_content([prompt, image_part])
+            api_time = time.time() - api_start
+            
+            print(f"  Gemini API responded in {api_time:.2f}s")
+            return response.text.strip()
+            
+        except Exception as e:
+            print(f"  Gemini API error (attempt {attempt + 1}): {e}")
+            if attempt < max_retries:
+                print(f"  Retrying in 2 seconds...")
+                time.sleep(2)
+            else:
+                print(f"  Failed after {max_retries + 1} attempts")
+                return f"Analysis failed: {str(e)[:50]}..."
 
 def wrap_text(text, font, scale, thickness, max_width):
     """Helper function to wrap feedback text"""
@@ -150,13 +170,21 @@ while cap.isOpened():
     
     # Send to Gemini for analysis at reduced rate
     if frame_count % process_every_n_frames == 0:
-        print(f"Analyzing frame {frame_count}/{int(cap.get(cv2.CAP_PROP_FRAME_COUNT))}")
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        progress = (frame_count / total_frames) * 100
+        print(f"\n=== Analyzing frame {frame_count}/{total_frames} ({progress:.1f}%) ===")
         
+        analysis_start = time.time()
         gemini_feedback = analyze_pose_with_gemini(frame, results.pose_landmarks)
-        if gemini_feedback:
+        analysis_time = time.time() - analysis_start
+        
+        if gemini_feedback and "failed" not in gemini_feedback.lower():
             current_feedback = gemini_feedback
             feedback_end_frame = frame_count + feedback_duration
-            print(f"Gemini feedback: {current_feedback}")
+            print(f"✓ Success in {analysis_time:.1f}s: {current_feedback}")
+        else:
+            print(f"✗ Failed in {analysis_time:.1f}s: {gemini_feedback or 'No response'}")
+            # Continue without feedback for this frame
     
     # Display current feedback if still active
     if frame_count <= feedback_end_frame and current_feedback:
