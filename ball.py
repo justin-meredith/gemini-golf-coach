@@ -24,7 +24,7 @@ pose = mp_pose.Pose(
 mp_drawing = mp.solutions.drawing_utils
 
 # Open the video file
-video_path = 'behind-view-full-speed.mov'  # Use full speed video
+video_path = 'videos/behind-view-full-speed.mov'  # Use full speed video
 cap = cv2.VideoCapture(video_path)
 original_fps = int(cap.get(cv2.CAP_PROP_FPS))
 
@@ -244,7 +244,7 @@ cv2.destroyAllWindows()
 
 # Save final video
 print("Creating final video with AI analysis...")
-output_path = 'gemini_golf_analysis.mp4'
+output_path = 'videos/gemini_golf_analysis.mp4'
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
