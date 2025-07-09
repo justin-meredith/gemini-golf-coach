@@ -1,4 +1,3 @@
-
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -25,9 +24,17 @@ pose = mp_pose.Pose(
 mp_drawing = mp.solutions.drawing_utils
 
 # Open the video file
-video_path = 'behind-view-slomo-2.mov'
+video_path = 'behind-view-full-speed.mov'  # Use full speed video
 cap = cv2.VideoCapture(video_path)
-fps = int(cap.get(cv2.CAP_PROP_FPS))
+original_fps = int(cap.get(cv2.CAP_PROP_FPS))
+
+# Slowdown settings
+slowdown_factor = 3  # Make video 3x slower (adjust as needed: 2, 3, 4, etc.)
+fps = max(1, original_fps // slowdown_factor)  # Ensure minimum 1 FPS
+
+print(f"Original video FPS: {original_fps}")
+print(f"Slowed down to: {fps} FPS (factor: {slowdown_factor}x)")
+
 original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -57,16 +64,16 @@ def analyze_pose_with_gemini(frame, pose_landmarks, max_retries=2):
         try:
             print(f"  Sending to Gemini API (attempt {attempt + 1}/{max_retries + 1})...")
             start_time = time.time()
-            
+
             # Check if API key is set
             if not os.environ.get('GEMINI_API_KEY'):
                 print("  ERROR: GEMINI_API_KEY not found in environment!")
                 return "API key not configured. Please set GEMINI_API_KEY in Secrets."
-            
+
             # Convert frame to base64
             frame_b64 = frame_to_base64(frame)
             print(f"  Image encoded in {time.time() - start_time:.2f}s")
-            
+
             # Create pose description from landmarks
             pose_description = ""
             if pose_landmarks:
@@ -80,7 +87,7 @@ def analyze_pose_with_gemini(frame, pose_landmarks, max_retries=2):
                 left_hip = pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_HIP]
                 right_hip = pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_HIP]
                 nose = pose_landmarks.landmark[mp_pose.PoseLandmark.NOSE]
-                
+
                 pose_description = f"""
                 Pose Analysis:
                 - Head position: ({nose.x:.3f}, {nose.y:.3f})
@@ -93,36 +100,36 @@ def analyze_pose_with_gemini(frame, pose_landmarks, max_retries=2):
                 - Left hip: ({left_hip.x:.3f}, {left_hip.y:.3f})
                 - Right hip: ({right_hip.x:.3f}, {right_hip.y:.3f})
                 """
-            
+
             prompt = f"""
             You are a golf swing analyst providing a detailed technical breakdown to a golf instructor. Analyze this frame and pose data objectively, describing exactly what is happening in the student's swing mechanics.
-            
+
             {pose_description}
-            
+
             Provide a factual analysis covering:
             1. Current body position and posture details
             2. Arm angles, extension, and positioning relative to optimal positions
             3. Hip and shoulder rotation angles and weight distribution
             4. Head position and spine angle maintenance
             5. Overall swing phase identification and mechanics assessment
-            
+
             Be technical and descriptive rather than prescriptive. Report what you observe in 2-3 sentences as if briefing the coach on their student's current swing state.
             """
-            
+
             # Create image part for Gemini
             image_part = {
                 "mime_type": "image/jpeg",
                 "data": frame_b64
             }
-            
+
             # Generate content with timeout simulation
             api_start = time.time()
             response = model.generate_content([prompt, image_part])
             api_time = time.time() - api_start
-            
+
             print(f"  Gemini API responded in {api_time:.2f}s")
             return response.text.strip()
-            
+
         except Exception as e:
             print(f"  Gemini API error (attempt {attempt + 1}): {e}")
             if attempt < max_retries:
@@ -171,30 +178,30 @@ while cap.isOpened():
         break
 
     frame_count += 1
-    
+
     # Rotate frame if needed (90 degrees clockwise to fix sideways video)
     if needs_rotation:
         frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-    
+
     # Process pose detection every frame for smooth visualization
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = pose.process(rgb_frame)
-    
+
     # Draw pose landmarks
     if results.pose_landmarks:
         mp_drawing.draw_landmarks(
             frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-    
+
     # Send to Gemini for analysis at reduced rate
     if frame_count % process_every_n_frames == 0:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         progress = (frame_count / total_frames) * 100
         print(f"\n=== Analyzing frame {frame_count}/{total_frames} ({progress:.1f}%) ===")
-        
+
         analysis_start = time.time()
         gemini_feedback = analyze_pose_with_gemini(frame, results.pose_landmarks)
         analysis_time = time.time() - analysis_start
-        
+
         if gemini_feedback and "failed" not in gemini_feedback.lower():
             current_feedback = gemini_feedback
             feedback_end_frame = frame_count + feedback_duration
@@ -202,7 +209,7 @@ while cap.isOpened():
         else:
             print(f"✗ Failed in {analysis_time:.1f}s: {gemini_feedback or 'No response'}")
             # Continue without feedback for this frame
-    
+
     # Display current feedback if still active
     if frame_count <= feedback_end_frame and current_feedback:
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -225,11 +232,11 @@ while cap.isOpened():
 
             cv2.putText(frame, line, (x, y), font, scale, border, border_thickness, cv2.LINE_AA)
             cv2.putText(frame, line, (x, y), font, scale, color, thickness, cv2.LINE_AA)
-    
+
     # Add frame counter for reference
     cv2.putText(frame, f"Frame: {frame_count}", (10, 30), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-    
+
     processed_frames.append(frame.copy())
 
 cap.release()
