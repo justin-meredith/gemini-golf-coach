@@ -31,6 +31,9 @@ class RealTimeGolfCoach:
         self.analysis_queue = queue.Queue(maxsize=2)
         self.running = True
         
+        # Create output directory if it doesn't exist
+        os.makedirs('output', exist_ok=True)
+        
         # Start analysis thread
         self.analysis_thread = threading.Thread(target=self.analysis_worker)
         self.analysis_thread.daemon = True

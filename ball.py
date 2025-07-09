@@ -244,7 +244,7 @@ cv2.destroyAllWindows()
 
 # Save final video
 print("Creating final video with AI analysis...")
-output_path = 'videos/gemini_golf_analysis.mp4'
+output_path = 'output/gemini_golf_analysis.mp4'
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 

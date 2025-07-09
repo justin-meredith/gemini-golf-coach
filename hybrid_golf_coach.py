@@ -32,6 +32,9 @@ class HybridGolfCoach:
         self.analysis_queue = queue.Queue(maxsize=2)
         self.running = True
         
+        # Create output directory if it doesn't exist
+        os.makedirs('output', exist_ok=True)
+        
         # Load script bank
         self.script_bank = self.load_script_bank()
         
