@@ -10,6 +10,7 @@ import base64
 import io
 from PIL import Image
 import os
+from video_manager import VideoManager
 
 # Configure Gemini API
 genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
@@ -253,3 +254,37 @@ for frame in processed_frames:
 
 out.release()
 print(f"AI analysis complete! Final video saved to {output_path}")
+
+# Upload to cloud storage for production app
+print("Uploading to cloud storage...")
+vm = VideoManager()
+
+# Upload original video
+original_storage_path = vm.upload_user_video(
+    video_file_path=video_path,
+    user_id="demo_user",
+    session_id=f"analysis_{int(time.time())}"
+)
+
+# Upload analyzed video
+if original_storage_path:
+    analyzed_storage_path = vm.save_analyzed_video(
+        analyzed_video_path=output_path,
+        original_storage_path=original_storage_path
+    )
+    
+    if analyzed_storage_path:
+        print(f"✓ Videos stored in cloud:")
+        print(f"  Original: {original_storage_path}")
+        print(f"  Analyzed: {analyzed_storage_path}")
+        
+        # Generate shareable URLs
+        original_url = vm.get_video_url(original_storage_path)
+        analyzed_url = vm.get_video_url(analyzed_storage_path)
+        
+        if original_url and analyzed_url:
+            print(f"\n📱 Shareable links (valid for 1 hour):")
+            print(f"  Original: {original_url}")
+            print(f"  Analyzed: {analyzed_url}")
+else:
+    print("⚠️  Cloud upload failed - check Object Storage setup")

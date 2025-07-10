@@ -11,6 +11,7 @@ import time
 import threading
 import queue
 import pandas as pd
+from video_manager import VideoManager
 
 # Configure Gemini API
 genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
@@ -25,15 +26,19 @@ pose = mp_pose.Pose(
 mp_drawing = mp.solutions.drawing_utils
 
 class HybridGolfCoach:
-    def __init__(self):
+    def __init__(self, user_id="demo_user"):
         self.current_feedback = ""
         self.feedback_timestamp = 0
         self.feedback_duration = 5  # seconds
         self.analysis_queue = queue.Queue(maxsize=2)
         self.running = True
+        self.user_id = user_id
         
         # Create output directory if it doesn't exist
         os.makedirs('output', exist_ok=True)
+        
+        # Initialize video manager for cloud storage
+        self.video_manager = VideoManager()
         
         # Load script bank
         self.script_bank = self.load_script_bank()
