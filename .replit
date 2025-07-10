@@ -9,7 +9,7 @@ packages = ["glibcLocales", "libGL", "libGLU"]
 run = ["sh", "-c", "python ball.py"]
 
 [workflows]
-runButton = "Run"
+runButton = "Web App"
 
 [[workflows.workflow]]
 name = "Golf Video Analysis"
@@ -37,3 +37,12 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python hybrid_golf_coach.py"
+
+[[workflows.workflow]]
+name = "Web App"
+author = 39387311
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python app.py"

@@ -1,0 +1,434 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Golf Coach</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .coaching-modes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .mode-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .mode-card:hover {
+            border-color: #28a745;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .mode-card.selected {
+            border-color: #28a745;
+            background: #e8f5e8;
+        }
+
+        .mode-card h3 {
+            color: #28a745;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .mode-card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .mode-features {
+            list-style: none;
+            text-align: left;
+        }
+
+        .mode-features li {
+            padding: 5px 0;
+            color: #555;
+        }
+
+        .mode-features li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #ccc;
+            border-radius: 15px;
+            padding: 60px 20px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #28a745;
+            background: #e8f5e8;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover .upload-icon, .upload-area.dragover .upload-icon {
+            color: #28a745;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            margin-left: 15px;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 30px;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            border: 2px solid #e9ecef;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .status-message {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .realtime-section {
+            background: #fff3cd;
+            border: 2px solid #ffeaa7;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏌️ AI Golf Coach</h1>
+            <p>Professional swing analysis powered by AI</p>
+        </div>
+
+        <div class="main-content">
+            <h2 style="text-align: center; margin-bottom: 30px; color: #333;">Choose Your Coaching Mode</h2>
+            
+            <div class="coaching-modes">
+                <div class="mode-card" data-mode="detailed">
+                    <h3>📊 Detailed Analysis</h3>
+                    <p>Comprehensive technical breakdown for instructors and advanced players.</p>
+                    <ul class="mode-features">
+                        <li>Frame-by-frame analysis</li>
+                        <li>Technical terminology</li>
+                        <li>Instructor-focused feedback</li>
+                        <li>Detailed posture metrics</li>
+                    </ul>
+                </div>
+
+                <div class="mode-card selected" data-mode="hybrid">
+                    <h3>🎯 Hybrid Coaching</h3>
+                    <p>Combines proven coaching scripts with dynamic AI analysis.</p>
+                    <ul class="mode-features">
+                        <li>Script bank foundation</li>
+                        <li>Feel-based cues</li>
+                        <li>Encouraging feedback</li>
+                        <li>Adaptive coaching style</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <h3 style="margin-bottom: 20px; color: #333;">Upload Your Golf Swing Video</h3>
+                <div class="upload-area" onclick="document.getElementById('file-input').click();">
+                    <div class="upload-icon">📁</div>
+                    <h4>Click to upload or drag & drop</h4>
+                    <p>Supports MOV, MP4, AVI, MKV files (max 100MB)</p>
+                    <input type="file" id="file-input" accept="video/*" />
+                </div>
+                
+                <div id="file-info" style="display: none; margin-bottom: 20px;">
+                    <p><strong>Selected file:</strong> <span id="filename"></span></p>
+                </div>
+
+                <button class="btn" id="upload-btn" disabled>
+                    🚀 Start Analysis
+                </button>
+                
+                <div class="progress-container" id="progress-container">
+                    <div class="status-message" id="status-message">Uploading video...</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <div id="progress-text">0%</div>
+                </div>
+
+                <div class="result-section" id="result-section">
+                    <h3 style="color: #28a745; margin-bottom: 20px;">✅ Analysis Complete!</h3>
+                    <p style="margin-bottom: 20px;">Your golf swing has been analyzed. Download the result below:</p>
+                    <button class="btn" id="download-btn">
+                        📥 Download Analysis Video
+                    </button>
+                </div>
+            </div>
+
+            <div class="realtime-section">
+                <h3 style="color: #856404; margin-bottom: 15px;">🎥 Real-Time Coaching</h3>
+                <p style="color: #856404; margin-bottom: 20px;">
+                    Want live coaching feedback? Use our real-time mode with your camera.
+                </p>
+                <a href="/realtime" class="btn btn-secondary">
+                    🎥 Launch Real-Time Coach
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedMode = 'hybrid';
+        let currentJobId = null;
+        let selectedFile = null;
+
+        // Mode selection
+        document.querySelectorAll('.mode-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedMode = card.getAttribute('data-mode');
+            });
+        });
+
+        // File upload handling
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const uploadArea = document.querySelector('.upload-area');
+
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('drop', handleDrop);
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                document.getElementById('filename').textContent = file.name;
+                document.getElementById('file-info').style.display = 'block';
+                uploadBtn.disabled = false;
+            }
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                selectedFile = files[0];
+                document.getElementById('filename').textContent = files[0].name;
+                document.getElementById('file-info').style.display = 'block';
+                uploadBtn.disabled = false;
+            }
+        }
+
+        uploadBtn.addEventListener('click', uploadAndProcess);
+
+        async function uploadAndProcess() {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('video', selectedFile);
+            formData.append('mode', selectedMode);
+
+            uploadBtn.disabled = true;
+            document.getElementById('progress-container').style.display = 'block';
+            updateProgress(10, 'Uploading video...');
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentJobId = result.job_id;
+                    updateProgress(20, 'Video uploaded, starting processing...');
+                    
+                    // Start processing
+                    await fetch(`/process/${currentJobId}`);
+                    pollStatus();
+                } else {
+                    alert('Upload failed: ' + result.error);
+                    resetUpload();
+                }
+            } catch (error) {
+                alert('Upload error: ' + error.message);
+                resetUpload();
+            }
+        }
+
+        async function pollStatus() {
+            if (!currentJobId) return;
+
+            try {
+                const response = await fetch(`/status/${currentJobId}`);
+                const status = await response.json();
+
+                updateProgress(status.progress, status.message);
+
+                if (status.status === 'completed') {
+                    showResult();
+                } else if (status.status === 'error') {
+                    alert('Processing failed: ' + status.message);
+                    resetUpload();
+                } else {
+                    setTimeout(pollStatus, 2000); // Poll every 2 seconds
+                }
+            } catch (error) {
+                console.error('Status polling error:', error);
+                setTimeout(pollStatus, 5000); // Retry in 5 seconds
+            }
+        }
+
+        function updateProgress(percentage, message) {
+            document.getElementById('progress-fill').style.width = percentage + '%';
+            document.getElementById('progress-text').textContent = percentage + '%';
+            document.getElementById('status-message').textContent = message;
+        }
+
+        function showResult() {
+            document.getElementById('progress-container').style.display = 'none';
+            document.getElementById('result-section').style.display = 'block';
+            
+            document.getElementById('download-btn').addEventListener('click', () => {
+                window.location.href = `/download/${currentJobId}`;
+            });
+        }
+
+        function resetUpload() {
+            uploadBtn.disabled = false;
+            document.getElementById('progress-container').style.display = 'none';
+            document.getElementById('result-section').style.display = 'none';
+            currentJobId = null;
+        }
+    </script>
+</body>
+</html>

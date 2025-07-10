@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Golf Coach</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .camera-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+
+        .camera-placeholder {
+            background: #343a40;
+            border-radius: 15px;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 2px solid #ffeaa7;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .instructions h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .instructions ul {
+            text-align: left;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+
+        .feedback-section {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            border-radius: 15px;
+            padding: 30px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback-text {
+            font-size: 1.2rem;
+            color: #155724;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎥 Real-Time Golf Coach</h1>
+            <p>Live AI-powered swing coaching with your camera</p>
+        </div>
+
+        <div class="content">
+            <div class="camera-section">
+                <h2 style="margin-bottom: 30px; color: #333;">Camera Feed</h2>
+                <div class="camera-placeholder">
+                    📹 Camera feed will appear here<br>
+                    <small>Note: Real-time mode requires running the desktop application</small>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn" onclick="startRealTimeCoach()">
+                        🚀 Start Real-Time Coach
+                    </button>
+                    <button class="btn btn-secondary" onclick="stopRealTimeCoach()">
+                        ⏹️ Stop Coach
+                    </button>
+                </div>
+            </div>
+
+            <div class="instructions">
+                <h3>📋 How to Use Real-Time Coaching</h3>
+                <ul>
+                    <li><strong>Camera Setup:</strong> Position camera to capture your full swing from the side</li>
+                    <li><strong>Distance:</strong> Stand about 6-8 feet from the camera</li>
+                    <li><strong>Lighting:</strong> Ensure good lighting for better pose detection</li>
+                    <li><strong>Background:</strong> Use a clean, uncluttered background</li>
+                    <li><strong>Practice:</strong> Take practice swings to get live feedback</li>
+                    <li><strong>Space Bar:</strong> Press space for instant analysis of current position</li>
+                </ul>
+            </div>
+
+            <div class="feedback-section">
+                <div class="feedback-text" id="feedback-text">
+                    💡 Start the real-time coach to begin receiving live feedback
+                </div>
+            </div>
+
+            <div style="margin-top: 30px;">
+                <a href="/" class="btn btn-secondary">
+                    ← Back to Video Analysis
+                </a>
+            </div>
+
+            <div style="margin-top: 30px; padding: 20px; background: #e3f2fd; border-radius: 15px;">
+                <h3 style="color: #1976d2; margin-bottom: 15px;">💻 Desktop Application Required</h3>
+                <p style="color: #1565c0; line-height: 1.6;">
+                    Real-time coaching requires running the Python scripts directly on your computer with camera access. 
+                    This web interface is primarily for video upload and analysis. To use real-time features, 
+                    run <code>realtime_golf_coach.py</code> or <code>hybrid_golf_coach.py</code> directly.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function startRealTimeCoach() {
+            document.getElementById('feedback-text').textContent = 
+                '🔄 Starting real-time coach... This would launch the camera-based coaching system.';
+            
+            // In a real implementation, this would communicate with the backend
+            // to start the real-time coaching script
+            fetch('/start_realtime')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('feedback-text').textContent = 
+                        '💡 ' + data.message + ' - ' + data.note;
+                })
+                .catch(error => {
+                    document.getElementById('feedback-text').textContent = 
+                        '❌ Error starting real-time coach: ' + error.message;
+                });
+        }
+
+        function stopRealTimeCoach() {
+            document.getElementById('feedback-text').textContent = 
+                '⏹️ Real-time coach stopped. Upload a video for analysis or restart real-time mode.';
+        }
+    </script>
+</body>
+</html>
