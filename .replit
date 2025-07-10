@@ -3,7 +3,7 @@ run = "python ball.py"
 
 [nix]
 channel = "stable-24_05"
-packages = ["glibcLocales", "libGL", "libGLU"]
+packages = ["libGL", "libGLU"]
 
 [deployment]
 run = ["sh", "-c", "python ball.py"]

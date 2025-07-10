@@ -10,7 +10,6 @@ import base64
 import io
 from PIL import Image
 import os
-from video_manager import VideoManager
 
 # Configure Gemini API
 genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
@@ -25,7 +24,7 @@ pose = mp_pose.Pose(
 mp_drawing = mp.solutions.drawing_utils
 
 # Open the video file
-video_path = 'videos/behind-view-full-speed-4.mov'  # Use full speed video
+video_path = 'behind-view-full-speed.mov'  # Use full speed video
 cap = cv2.VideoCapture(video_path)
 original_fps = int(cap.get(cv2.CAP_PROP_FPS))
 
@@ -245,7 +244,7 @@ cv2.destroyAllWindows()
 
 # Save final video
 print("Creating final video with AI analysis...")
-output_path = 'output/gemini_golf_analysis.mp4'
+output_path = 'gemini_golf_analysis.mp4'
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
@@ -254,37 +253,3 @@ for frame in processed_frames:
 
 out.release()
 print(f"AI analysis complete! Final video saved to {output_path}")
-
-# Upload to cloud storage for production app
-print("Uploading to cloud storage...")
-vm = VideoManager()
-
-# Upload original video
-original_storage_path = vm.upload_user_video(
-    video_file_path=video_path,
-    user_id="demo_user",
-    session_id=f"analysis_{int(time.time())}"
-)
-
-# Upload analyzed video
-if original_storage_path:
-    analyzed_storage_path = vm.save_analyzed_video(
-        analyzed_video_path=output_path,
-        original_storage_path=original_storage_path
-    )
-    
-    if analyzed_storage_path:
-        print(f"✓ Videos stored in cloud:")
-        print(f"  Original: {original_storage_path}")
-        print(f"  Analyzed: {analyzed_storage_path}")
-        
-        # Generate shareable URLs
-        original_url = vm.get_video_url(original_storage_path)
-        analyzed_url = vm.get_video_url(analyzed_storage_path)
-        
-        if original_url and analyzed_url:
-            print(f"\n📱 Shareable links (valid for 1 hour):")
-            print(f"  Original: {original_url}")
-            print(f"  Analyzed: {analyzed_url}")
-else:
-    print("⚠️  Cloud upload failed - check Object Storage setup")

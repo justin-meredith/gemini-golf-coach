@@ -31,9 +31,6 @@ class RealTimeGolfCoach:
         self.analysis_queue = queue.Queue(maxsize=2)
         self.running = True
         
-        # Create output directory if it doesn't exist
-        os.makedirs('output', exist_ok=True)
-        
         # Start analysis thread
         self.analysis_thread = threading.Thread(target=self.analysis_worker)
         self.analysis_thread.daemon = True
@@ -81,23 +78,15 @@ class RealTimeGolfCoach:
                 """
             
             prompt = f"""
-            You are a professional golf instructor and swing coach providing real-time coaching feedback.
+            You are a PGA golf instructor providing real-time swing coaching. Analyze this golf swing position and provide ONE specific, actionable tip.
             
-            Use this proven coaching framework:
-            1. OBSERVATION: Briefly describe what you see
-            2. CUE/FIX: Give ONE specific, actionable instruction using feel-based language
-            3. REINFORCEMENT: End with encouraging context
-            
-            COACHING STYLE EXAMPLES:
-            - "Your takeaway is pulling the club behind your body early. Let the clubhead stay outside your hands for the first couple feet back. That'll help you stay on plane and make the swing easier to repeat."
-            - "You're lifting your head just before impact. Try to keep your eyes down and maintain your spine angle longer. This helps you strike the ball more consistently."
-            - "Your lead arm is bending too early in the backswing. Keep it straighter through the top of the swing. This creates better width and more power."
-            
-            CURRENT SWING ANALYSIS:
             {pose_description}
             
-            Provide coaching feedback following the framework above. Focus on ONE key improvement.
-            Use accessible language and positive reinforcement. Maximum 2 sentences total.
+            Focus on the most important improvement needed right now. Keep response to 1 sentence, maximum 15 words.
+            Be encouraging but specific. Examples:
+            - "Keep your head steady through impact"
+            - "Extend that lead arm for better width"
+            - "Rotate your hips more on the downswing"
             """
             
             image_part = {
