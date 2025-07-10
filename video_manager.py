@@ -7,7 +7,14 @@ from replit.object_storage import Client
 class VideoManager:
     def __init__(self):
         """Initialize video manager with Object Storage client"""
-        self.client = Client()
+        try:
+            self.client = Client()
+            self.storage_available = True
+        except Exception as e:
+            print(f"Warning: Object Storage not available: {e}")
+            self.client = None
+            self.storage_available = False
+            
         self.video_folders = {
             'uploads': 'user_uploads/',      # Original swing videos
             'analyzed': 'analyzed_videos/',  # AI-processed videos
@@ -15,21 +22,29 @@ class VideoManager:
             'sessions': 'sessions/'          # Training session data
         }
         
-        # Create folder structure
-        self._ensure_folders_exist()
+        # Create folder structure if storage is available
+        if self.storage_available:
+            self._ensure_folders_exist()
     
     def _ensure_folders_exist(self):
         """Ensure all necessary folders exist in Object Storage"""
         for folder_type, folder_path in self.video_folders.items():
             try:
                 # Try to list objects in folder to check if it exists
-                list(self.client.list(prefix=folder_path, limit=1))
-            except:
-                # If folder doesn't exist, create a marker file
-                self.client.upload_from_text(f"{folder_path}.keep", "folder marker")
+                objects = list(self.client.list(prefix=folder_path))
+                if not objects:
+                    # If folder is empty, create a marker file
+                    self.client.upload_from_text(f"{folder_path}.keep", "folder marker")
+            except Exception as e:
+                print(f"Warning: Could not access Object Storage folder {folder_path}: {e}")
+                # Skip folder creation if Object Storage isn't configured
     
     def upload_user_video(self, video_file_path, user_id, session_id=None):
         """Upload user's swing video to Object Storage"""
+        if not self.storage_available:
+            print("⚠️  Object Storage not configured - videos saved locally only")
+            return None
+            
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         session_part = f"_{session_id}" if session_id else ""
         
@@ -48,6 +63,10 @@ class VideoManager:
     
     def save_analyzed_video(self, analyzed_video_path, original_storage_path):
         """Save AI-analyzed video to Object Storage"""
+        if not self.storage_available or not original_storage_path:
+            print("⚠️  Object Storage not configured - analyzed video saved locally only")
+            return None
+            
         # Mirror the path structure but in analyzed folder
         analyzed_path = original_storage_path.replace(
             self.video_folders['uploads'], 
@@ -66,6 +85,10 @@ class VideoManager:
     
     def get_video_url(self, storage_path):
         """Get a downloadable URL for a video"""
+        if not self.storage_available or not storage_path:
+            print("⚠️  Object Storage not configured - cannot generate URLs")
+            return None
+            
         try:
             # Generate a signed URL that's valid for 1 hour
             url = self.client.download_url(storage_path, expires_in=3600)
