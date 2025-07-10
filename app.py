@@ -97,28 +97,50 @@ def process_video_background(job_id):
         filepath = job['filepath']
         mode = job['mode']
         
+        print(f"Processing job {job_id}: file={filepath}, mode={mode}")
+        
+        # Check if uploaded file exists
+        if not os.path.exists(filepath):
+            job['status'] = 'error'
+            job['message'] = f'Uploaded file not found: {filepath}'
+            print(f"ERROR: File not found: {filepath}")
+            return
+        
         # Update video path in the appropriate script
         if mode == 'hybrid':
             script_path = 'hybrid_golf_coach.py'
-            output_name = 'hybrid_coaching_analysis.mp4'
+            output_name = f'hybrid_coaching_analysis_{job_id}.mp4'
         elif mode == 'detailed':
             script_path = 'ball.py'
-            output_name = 'gemini_golf_analysis.mp4'
+            output_name = f'gemini_golf_analysis_{job_id}.mp4'
         else:  # realtime mode - not applicable for uploaded videos
             job['status'] = 'error'
             job['message'] = 'Real-time mode requires live camera feed'
             return
         
+        # Check if script exists
+        if not os.path.exists(script_path):
+            job['status'] = 'error'
+            job['message'] = f'Analysis script not found: {script_path}'
+            print(f"ERROR: Script not found: {script_path}")
+            return
+        
         # Create a modified version of the script for this specific video
         temp_script = f"temp_{job_id}.py"
+        print(f"Creating temporary script: {temp_script}")
         modify_script_for_video(script_path, temp_script, filepath, output_name)
         
         job['progress'] = 20
         job['message'] = 'Starting AI analysis...'
         
         # Run the analysis
+        print(f"Running analysis with: python {temp_script}")
         result = subprocess.run(['python', temp_script], 
                               capture_output=True, text=True, timeout=600)
+        
+        print(f"Analysis completed. Return code: {result.returncode}")
+        print(f"STDOUT: {result.stdout[-500:]}")  # Last 500 chars
+        print(f"STDERR: {result.stderr[-500:]}")  # Last 500 chars
         
         # Clean up temp script
         if os.path.exists(temp_script):
@@ -126,29 +148,51 @@ def process_video_background(job_id):
         
         if result.returncode == 0:
             output_path = f'output/{output_name}'
+            print(f"Checking for output file: {output_path}")
             if os.path.exists(output_path):
                 job['status'] = 'completed'
                 job['progress'] = 100
                 job['message'] = 'Analysis completed successfully!'
                 job['output_path'] = output_path
+                print(f"SUCCESS: Output saved to {output_path}")
             else:
                 job['status'] = 'error'
                 job['message'] = 'Analysis completed but output file not found'
+                print(f"ERROR: Expected output file {output_path} not found")
+                # List files in output directory for debugging
+                output_files = os.listdir('output') if os.path.exists('output') else []
+                print(f"Files in output directory: {output_files}")
         else:
             job['status'] = 'error'
             job['message'] = f'Analysis failed: {result.stderr[:200]}'
+            print(f"ERROR: Analysis failed with code {result.returncode}")
             
     except subprocess.TimeoutExpired:
         job['status'] = 'error'
         job['message'] = 'Analysis timed out (10 minutes)'
+        print(f"ERROR: Analysis timed out for job {job_id}")
     except Exception as e:
         job['status'] = 'error'
         job['message'] = f'Processing error: {str(e)[:200]}'
+        print(f"ERROR: Exception in processing: {e}")
+        import traceback
+        traceback.print_exc()
 
 def modify_script_for_video(source_script, temp_script, video_path, output_name):
     """Modify the script to use the uploaded video"""
     with open(source_script, 'r') as f:
         content = f.read()
+    
+    # Add environment check at the top
+    env_check = """
+# Check for required environment variables
+import os
+if not os.environ.get('GEMINI_API_KEY'):
+    print("ERROR: GEMINI_API_KEY not found in environment!")
+    print("Please set your Gemini API key in Secrets.")
+    exit(1)
+
+"""
     
     # Replace video path
     if 'ball.py' in source_script:
@@ -161,6 +205,14 @@ def modify_script_for_video(source_script, temp_script, video_path, output_name)
                                 f"video_path = '{video_path}'")
         content = content.replace("output_path = 'output/hybrid_coaching_analysis.mp4'",
                                 f"output_path = 'output/{output_name}'")
+    
+    # Add environment check after imports
+    import_end = content.find('\n\n# Configure Gemini API')
+    if import_end == -1:
+        import_end = content.find('\n\n# Initialize MediaPipe')
+    
+    if import_end != -1:
+        content = content[:import_end] + '\n' + env_check + content[import_end:]
     
     with open(temp_script, 'w') as f:
         f.write(content)
