@@ -191,10 +191,22 @@ Example {i+1}: {script.get('Fault', 'Unknown fault')}
         self.running = False
 
 def main():
-    # Initialize camera
-    cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    # Check if we should process a video file (for web app) or use camera
+    video_path = 'videos/behind-view-full-speed-4.mov'  # Default video for testing
+    use_camera = not os.path.exists(video_path) or len(os.sys.argv) > 1
+    
+    if use_camera:
+        # Initialize camera for real-time coaching
+        cap = cv2.VideoCapture(0)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        process_realtime_coaching(cap)
+    else:
+        # Process video file for web app
+        process_video_file(video_path)
+
+def process_realtime_coaching(cap):
+    """Handle real-time camera coaching"""
     
     coach = HybridGolfCoach()
     frame_count = 0
@@ -264,6 +276,143 @@ def main():
         coach.stop()
         cap.release()
         cv2.destroyAllWindows()
+
+def process_video_file(video_path):
+    """Process uploaded video file for web app"""
+    print(f"Processing video file: {video_path}")
+    
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"Error: Could not open video file {video_path}")
+        return
+    
+    # Get video properties
+    original_fps = int(cap.get(cv2.CAP_PROP_FPS))
+    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    # Setup output video
+    output_path = 'output/hybrid_coaching_analysis.mp4'
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    
+    # Process at reduced FPS for analysis
+    slowdown_factor = 2
+    fps = max(1, original_fps // slowdown_factor)
+    
+    # Check for rotation
+    needs_rotation = original_width > original_height
+    if needs_rotation:
+        width, height = original_height, original_width
+    else:
+        width, height = original_width, original_height
+    
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    
+    coach = HybridGolfCoach()
+    frame_count = 0
+    process_every_n_frames = max(1, fps // 1)  # Process every second
+    current_feedback = ""
+    feedback_end_frame = 0
+    feedback_duration = 4 * fps
+    
+    print(f"Processing {total_frames} frames at {fps} FPS...")
+    
+    try:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            frame_count += 1
+            
+            # Rotate if needed
+            if needs_rotation:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            
+            # Process pose detection
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = pose.process(rgb_frame)
+            
+            # Draw pose landmarks
+            if results.pose_landmarks:
+                mp_drawing.draw_landmarks(
+                    frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+                    mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+                    mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2)
+                )
+                
+                # Send for analysis periodically
+                if frame_count % process_every_n_frames == 0:
+                    progress = (frame_count / total_frames) * 100
+                    print(f"Analyzing frame {frame_count}/{total_frames} ({progress:.1f}%)")
+                    
+                    feedback = coach.analyze_with_gemini(frame, results.pose_landmarks)
+                    if feedback and "failed" not in feedback.lower():
+                        current_feedback = feedback
+                        feedback_end_frame = frame_count + feedback_duration
+                        print(f"Hybrid feedback: {feedback}")
+            
+            # Display current feedback
+            if frame_count <= feedback_end_frame and current_feedback:
+                # Add text overlay similar to ball.py
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                scale = 1.2
+                thickness = 2
+                border_thickness = 4
+                color = (255, 255, 255)
+                border = (0, 0, 0)
+                
+                # Wrap long feedback text
+                max_width = int(width * 0.85)
+                words = current_feedback.split()
+                lines = []
+                current_line = []
+                
+                for word in words:
+                    test_line = ' '.join(current_line + [word])
+                    text_size = cv2.getTextSize(test_line, font, scale, thickness)[0]
+                    
+                    if text_size[0] <= max_width:
+                        current_line.append(word)
+                    else:
+                        if current_line:
+                            lines.append(' '.join(current_line))
+                        current_line = [word]
+                
+                if current_line:
+                    lines.append(' '.join(current_line))
+                
+                # Draw text lines
+                spacing = 40
+                total_height = len(lines) * spacing
+                start_y = height - 60 - total_height
+                
+                for i, line in enumerate(lines):
+                    text_size = cv2.getTextSize(line, font, scale, thickness)[0]
+                    x = (width - text_size[0]) // 2
+                    y = start_y + (i * spacing)
+                    
+                    cv2.putText(frame, line, (x, y), font, scale, border, border_thickness, cv2.LINE_AA)
+                    cv2.putText(frame, line, (x, y), font, scale, color, thickness, cv2.LINE_AA)
+            
+            # Add frame counter
+            cv2.putText(frame, f"Hybrid Coaching - Frame: {frame_count}", (10, 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            
+            out.write(frame)
+        
+        cap.release()
+        out.release()
+        coach.stop()
+        
+        print(f"Hybrid coaching analysis complete! Output saved to {output_path}")
+        
+    except Exception as e:
+        print(f"Error during video processing: {e}")
+        cap.release()
+        out.release()
+        coach.stop()
 
 if __name__ == "__main__":
     main()
