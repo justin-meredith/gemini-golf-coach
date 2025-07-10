@@ -25,7 +25,7 @@ pose = mp_pose.Pose(
 mp_drawing = mp.solutions.drawing_utils
 
 # Open the video file
-video_path = 'videos/behind-view-full-speed.mov'  # Use full speed video
+video_path = 'videos/behind-view-full-speed-4.mov'  # Use full speed video
 cap = cv2.VideoCapture(video_path)
 original_fps = int(cap.get(cv2.CAP_PROP_FPS))
 
