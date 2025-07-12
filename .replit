@@ -9,7 +9,7 @@ packages = ["libGL", "libGLU"]
 run = ["sh", "-c", "python ball.py"]
 
 [workflows]
-runButton = "Golf Video Analysis"
+runButton = "Golf Analysis Pipeline"
 
 [[workflows.workflow]]
 name = "Golf Video Analysis"
@@ -28,3 +28,12 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python realtime_golf_coach.py"
+
+[[workflows.workflow]]
+name = "Golf Analysis Pipeline"
+author = 39387311
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python golf_analyzer.py"

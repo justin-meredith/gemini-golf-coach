@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+"""
+Legacy golf analysis script - use golf_analyzer.py for the new modular pipeline
+"""
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -253,3 +257,8 @@ for frame in processed_frames:
 
 out.release()
 print(f"AI analysis complete! Final video saved to {output_path}")
+```
+
+```text
+The script updates the description to indicate it's a legacy script and links to the new modular pipeline.
+```
