@@ -51,13 +51,13 @@ def main():
     
     print("\n🎉 Analysis Complete!")
     print("\n📄 Generated Files:")
-    print("  • output/pose_only_video.mp4 - Clean pose landmarks video")
+    print("  • output/enhanced_swing_video.mp4 - Swing video with pose tracking and club path")
     print(f"  • {report_path} - Detailed swing analysis report")
     print("  • key_frames/ - Individual frame captures")
     
     print("\n💡 Next Steps:")
     print("  1. Review the markdown report for detailed feedback")
-    print("  2. Watch the pose-only video to see your swing mechanics")
+    print("  2. Watch the enhanced video to see your swing with pose tracking and club path")
     print("  3. Use the feedback to practice specific improvements")
 
 if __name__ == "__main__":
