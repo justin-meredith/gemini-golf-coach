@@ -259,6 +259,4 @@ out.release()
 print(f"AI analysis complete! Final video saved to {output_path}")
 ```
 
-```text
-The script updates the description to indicate it's a legacy script and links to the new modular pipeline.
-```
+# The script updates the description to indicate it's a legacy script and links to the new modular pipeline.
